@@ -21,16 +21,128 @@ let persons = [
     "id": "4",
     "name": "Mary Poppendieck", 
     "number": "39-23-6423122"
+  },
+    { 
+    "id": "5",
+    "name": "Denzel Washon", 
+    "number": "43-67-097623"
   }
 ]
 
 app.use(express.json())
 
 app.get('/', (request, response) => {
+  response.send('<h1>Hello World!</h1>')
+})
+
+app.get('/persons', (request, response) => {
   response.json(persons)
 })
 
+app.get('/info', (request, response) => {
+  const entryCount = persons.length
+  //new Date().toString gets the current date/time
+  const requestTime = new Date().toString()
+  
+  response.send(`
+    <div>
+      <p>Phonebook has info for ${entryCount} people</p>
+      <p>${requestTime}</p>
+    </div>
+  `)
+})
+
+app.get('/api/persons/:id', (request, response) => {
+  const id = request.params.id
+  const person = persons.find(person => person.id === id)
+
+  if (person) {
+    response.json(person)
+  } else {
+    response.status(404).end()
+  }
+})
+
+app.delete('/delete/persons/:id', (request, response) => {
+  const id = request.params.id
+  const person = persons.find(person => person.id === id)
+
+  if (person){
+    //Remove the person from the array
+    persons = persons.filter(p => p.id !== id)
+    //204 No content = successfully deleted
+    response.status(204).end()
+  }else{
+    //Custom error status message
+    response.status(404).json({error: 'Person not found'})
+  }
+
+})
+
+app.post('/api/persons', (request, response) => {
+  const body = request.body
+
+  //Validation
+  if (!body.name || !body.number) {
+    return response.status(400).json({
+      error: 'Name or number missing'
+    })
+  }
+
+  //Check if name already exists
+  const nameExists = persons.find(person => person.name === body.name)
+  if (nameExists) {
+    return response.status(400).json({
+      error: 'Name must be unique'
+    })
+  }
+
+  //Generate unique ID
+  const generateId = () => {
+    return Math.floor(Math.random() * 1000000).toString()
+  }
+  
+  //Formatting
+  const person = {
+    id: generateId(),
+    name: body.name,
+    number: body.number
+  }
+  //Status 201 = newly created
+  persons = persons.concat(person)
+  response.status(201).json(person)
+})
+
+//Testing POST
+fetch('http://localhost:3001/api/persons', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Browser Test',
+    number: '555-9999'
+  })
+})
+.then(response => response.json())
+.then(data => console.log('Success:', data))
+.catch(error => console.error('Error:', error))
+
+//Test if name is missing
+fetch('http://localhost:3001/api/persons', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    number: '555-9999'
+  })
+})
+.then(response => response.json())
+.then(data => console.log('Missing name result:', data))
+.catch(error => console.error('Error:', error))
+
 const PORT = 3001
 app.listen(PORT, () => {
-  console.log('Server running on port ${PORT}')
+  console.log(`Server running on port ${PORT}`)
 })
